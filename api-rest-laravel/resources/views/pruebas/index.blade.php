@@ -1,7 +1,7 @@
 <h1>{{$titulo}}</h1>
-<ul>
+<ol>
     @foreach($animales as $animal)
     <li>{{$animal}}</li>
     @endforeach
-</ul>
+</ol>
 
