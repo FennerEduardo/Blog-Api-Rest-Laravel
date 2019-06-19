@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+//Incluir el modelo de Usuario
+use App\User;
 
 class UserController extends Controller {
 
@@ -29,7 +31,7 @@ class UserController extends Controller {
             $validate = \Validator::make($params_array, [
                         'name' => 'required|alpha',
                         'surname' => 'required|alpha',
-                        'email' => 'required|email',
+                        'email' => 'required|email|unique:users', //Comprobar sí el usuario ya existe (duplicado)
                         'password' => 'required'
             ]);
             //Comprobar sí hay errores y enviar respuesta
@@ -47,18 +49,28 @@ class UserController extends Controller {
             } else{
                 
                 //Validación pasada corectamente
-                
-                
+                                
                 //Cifrar la contraseña
-                //Comprobar sí el usuario ya existe (duplicado)
-                //Crear el usuario
+                $pwd = hash('sha256', $params->password);
                 
+                //Crear el usuario
+                $user = new User();
+                $user->name = $params_array['name'];
+                $user->surname = $params_array['surname'];
+                $user->email = $params_array['email'];
+                $user->password = $pwd;
+                $user->role = 'ROLE_USER';
+                
+                //Guardar el usuario
+                
+                $user->save();
                 
                 //Crear arreglo con los datos que van a ir en el objeto JSON
                 $data = array(
                     'status' => 'success',
                     'code' => 200,
-                    'message' => 'el usuario se ha creado correctamente'                
+                    'message' => 'el usuario se ha creado correctamente',
+                    'user' => $user
                 );
 
             } 
@@ -77,7 +89,67 @@ class UserController extends Controller {
 
     //Método de login
     public function login(Request $request) {
-        return "Acción de Login de usuarios";
+        
+        //Crear un obejto de la librería JWT para la autenticación de usuarios
+        $jwtAuth = new \JwtAuth();
+        
+        //Recibir los datos del post
+        $json = $request->input('json', null);
+        $params = json_decode($json);
+        $params_array = json_decode($json, true);
+        
+        //Validar los datos recibimos
+         $validate = \Validator::make($params_array, [
+                        
+                        'email' => 'required|email', 
+                        'password' => 'required'
+            ]);
+            //Comprobar sí hay errores y enviar respuesta
+            if ($validate->fails()) {
+                
+                //Validación fallida
+                
+                //Crear arreglo con los datos que van a ir en el objeto JSON
+                $signup = array(
+                    'status' => 'error',
+                    'code' => 404,
+                    'message' => 'el usuario no se ha podido identificar',
+                    'errors' => $validate->errors()
+                );
+            }else{
+                
+                //cifrar la contraseña
+                $pwd = hash('sha256', $params->password);
+                //devolver el token o los datos
+                //Usar método del helper
+                $signup = $jwtAuth->signup($params->email, $pwd);
+                
+                // Llega el getToken?
+                if(!empty($params->gettoken)){
+                    //Usar método del helper
+                    $signup = $jwtAuth->signup($params->email, $pwd, true);
+                }
+                
+            }
+       
+        //Usar método del helper
+        return response()->json($signup, 200);
     }
 
+    //Método para actualizar los datos del usuario
+    public function update(Request $request) {
+        //Obtener el token
+        $token = $request->header('Authorization');
+        $jwtAuth = new \JwtAuth();
+        $checkToken = $jwtAuth->checkToken($token);
+        
+        //Comprobar sí el token llega correctamente
+        if($checkToken){
+            echo "<h1>Login correcto</h1>";
+        }else{
+            echo "<h1>Login Incorrecto</h1>";
+        }
+        
+        die();
+    }
 }
