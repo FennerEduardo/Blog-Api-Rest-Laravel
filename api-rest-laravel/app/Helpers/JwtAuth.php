@@ -34,6 +34,7 @@ class JwtAuth{
         if(is_object($user)){
             $signup = true;
         }
+         
         //Generar el token con los datos del usuario identificado
         if($signup){
             
@@ -43,20 +44,25 @@ class JwtAuth{
                 'name'      =>      $user->name,
                 'surname'   =>      $user->surname,
                 'iat'       =>      time(),
-                'exp'       =>      time() + (7 * 24 * 60 * 60)
+                'exp'       =>      time()+(7 * 24 * 60 * 60)
             );
+            
             
             //Usar la libería para crear un objeto que codifique el token
             $jwt = JWT::encode($token, $this->key, 'HS256');
             
+            
             //Decodificar el token para enviarlo como respuesta 
             $decoded =JWT::decode($jwt, $this->key, ['HS256']);
+            
             
             //Devolver los datos decodificados o el token, en función de un parametro
             if(is_null($getToken)){
                 $data =  $jwt; // retorna el token
+                
             }else{
                 $data = $decoded; //retorno del token decodificado
+                
             }
             
         }else{
@@ -78,6 +84,7 @@ class JwtAuth{
         try{
             //Eliminar las comillas del token
             $jwt = str_replace('"', '', $jwt);
+            
             //Decodificar el token con ayuda de la librería JWT
             $decoded = JWT::decode($jwt, $this->key, ['HS256']);
         }catch(\UnexpectedValueException $e){
@@ -97,7 +104,7 @@ class JwtAuth{
         if ($getIdentity) {
             return $decoded;
         }
-        
+                           
         //Retornar la validación del token, si es true la autenticación es valida y sí el false no lo es
         return $auth;
     }

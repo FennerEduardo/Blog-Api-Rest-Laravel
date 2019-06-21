@@ -11,6 +11,9 @@
 |
 */
 
+//Cargando clases para usar middleware en las rutas
+use  \App\Http\Middleware\ApiAuthMiddleware;
+
 //RUTAS DE PRUEBA
 //Ruta principal
 Route::get('/', function () {
@@ -59,4 +62,9 @@ Route::get('/test-orm', 'PruebasController@testOrm');
     // Rutas del controlador de Usuarios
     Route::post('/api/register', 'UserController@register');
     Route::post('/api/login', 'UserController@login');
-    Route::post('/api/update', 'UserController@update');
+    Route::put('/api/user/update', 'UserController@update');
+    Route::post('/api/user/upload', 'UserController@upload')->middleware(ApiAuthMiddleware::class);
+    Route::get('/api/user/avatar/{filename}', 'UserController@getImage');
+
+    
+

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 //Incluir el modelo de Usuario
 use App\User;
 
@@ -90,14 +91,14 @@ class UserController extends Controller {
     //Método de login
     public function login(Request $request) {
         
-        //Crear un obejto de la librería JWT para la autenticación de usuarios
+        //Crear un objeto de la librería JWT para la autenticación de usuarios
         $jwtAuth = new \JwtAuth();
         
         //Recibir los datos del post
         $json = $request->input('json', null);
         $params = json_decode($json);
         $params_array = json_decode($json, true);
-        
+ 
         //Validar los datos recibimos
          $validate = \Validator::make($params_array, [
                         
@@ -123,11 +124,13 @@ class UserController extends Controller {
                 //devolver el token o los datos
                 //Usar método del helper
                 $signup = $jwtAuth->signup($params->email, $pwd);
+                                
                 
                 // Llega el getToken?
                 if(!empty($params->gettoken)){
                     //Usar método del helper
                     $signup = $jwtAuth->signup($params->email, $pwd, true);
+                   
                 }
                 
             }
@@ -138,18 +141,119 @@ class UserController extends Controller {
 
     //Método para actualizar los datos del usuario
     public function update(Request $request) {
-        //Obtener el token
-        $token = $request->header('Authorization');
-        $jwtAuth = new \JwtAuth();
-        $checkToken = $jwtAuth->checkToken($token);
+        
+        //Recoger datos por Post
+        $json = $request->input('json', null);
+        //Decodificar el objeto Json
+        #$params = json_decode($json);
+        $params_array = json_decode($json, true); 
+        
         
         //Comprobar sí el token llega correctamente
-        if($checkToken){
-            echo "<h1>Login correcto</h1>";
+        if($checkToken && !empty($params_array)){
+                     
+            //Obtener el usuario identificado
+            $user = $jwtAuth->checkToken($token, true);
+            
+            
+            //Validar Datos  //Comprobar sí el usuario ya existe (duplicado)
+            $validate = \Validator::make($params_array, [
+                'name' => 'required|alpha',
+                'surname' => 'required|alpha',
+                'email' => 'required|email|unique:users,'.$user->sub 
+            ]);
+            
+            //Quitar campos que no se van a actualizar
+            unset($params_array['id']);
+            unset($params_array['role']);
+            unset($params_array['password']);
+            unset($params_array['created_at']);
+            unset($params_array['remember_token']);
+            
+            //Actualizar el usuario en el DDBB
+            $user_update = User::where('id', $user->sub)->update($params_array);
+            
+            //Devolver array con el resultado de la actualizacion
+            $data = array(
+               'code' => 200,
+               'status' => 'success',
+               'user' => $user,
+               'changes' => $params_array
+           );
+            
+            
+            
         }else{
-            echo "<h1>Login Incorrecto</h1>";
+           $data = array(
+               'code' => 400,
+               'status' => 'error',
+               'message' => 'El usuario no está identificado'
+           );
         }
         
-        die();
+        //Convertir la variable data en un objeto Json
+        return response()->json($data, $data['code']); 
+    }
+    
+    //Método para cargar un la imagen del avatar de usuario
+    public function upload(Request $request) {
+        
+        //Recoger datos de las petición 
+        $image = $request->file('file0');
+        
+        //Validar que sea una imagen
+        $validate = \Validator::make($request->all(), [
+            'file0' => 'required|image|mimes:jpg.jpeg,png,gif'
+        ]);
+        
+        // Guardar la imagen
+        if(!$image || $validate->fails()){
+            
+            //Devolver resultados negativos
+
+            $data = array(
+                   'code' => 400,
+                   'status' => 'error',
+                   'message' => 'Error al subir imagen'
+               );
+           
+        } else{
+               
+            $image_name = time().$image->getClientOriginalName();
+            \Storage::disk('users')->put($image_name, \File::get($image));
+            
+           //Devolver resultados positivos
+            $data = array(
+               'code' => 200,
+               'status' => 'success',
+               'image' => $image_name
+           );
+        }
+        //Convertir la variable data en un objeto Json
+        return response()->json($data, $data['code']); 
+    }
+    
+    //Método para obtener una imagen del disco virtual de la app
+    public function getImage($filename) {
+        //comprobar si la imagen existe
+        $isset = \Storage::disk('users')->exists($filename);
+        
+        if($isset){
+        
+            //obtener el disco y el archivo de imagen 
+            $file = \Storage::disk('users')->get($filename);
+                  
+            //Retornar el archivo obtenido
+            return new Response($file, 200);
+        
+        }else {
+            $data = array(
+                   'code' => 404,
+                   'status' => 'error',
+                   'message' => 'La imagen no existe'
+               );
+        }
+        //Convertir la variable data en un objeto Json
+        return response()->json($data, $data['code']); 
     }
 }
