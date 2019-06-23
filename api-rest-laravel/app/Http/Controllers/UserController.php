@@ -256,4 +256,29 @@ class UserController extends Controller {
         //Convertir la variable data en un objeto Json
         return response()->json($data, $data['code']); 
     }
+    
+    //Método para obtener los datos del usuario logueado
+    public function detail($id) {
+        
+        //Buscar el usuario con el id que se pasa  por parametro
+        $user = User::find($id);
+        
+        //Comprobar sí hay un objeto en el $user
+        if(is_object($user)){
+            $data = array(
+                   'code' => 200,
+                   'status' => 'success',
+                   'user' => $user
+               );
+        } else{
+            $data = array(
+                   'code' => 404,
+                   'status' => 'error',
+                   'message' => 'El usuario no existe'
+               );
+        }
+        
+        //Convertir la variable data en un objeto Json
+        return response()->json($data, $data['code']); 
+    }
 }
